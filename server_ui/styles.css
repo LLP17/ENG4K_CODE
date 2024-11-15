@@ -62,7 +62,10 @@ background-color: #0056b3;
 }
 
 .nav-button:active {
-background-color: #004080;
+    font-size: 25px;
+    border: solid;
+    background-color: #004080;
+    
 }
 
 .stop-button {
