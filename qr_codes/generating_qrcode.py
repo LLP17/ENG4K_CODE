@@ -1,8 +1,8 @@
 import qrcode
 
 # Wi-Fi credentials and IP address
-ssid = "ECHO-ALPHA"
-password = "aLpHaEcHo1"
+ssid = "yourAp"
+password = "yourPassword"
 security_type = "WPA"  # Could also be WEP or nopass for open networks
 ip_address = "http://192.168.4.1"  # Replace with your device's IP address
 
