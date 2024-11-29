@@ -3,8 +3,8 @@
 #include <WebServer.h>
 
 // Replace with your network credentials
-const char* ssid = "ECHO-ALPHA";
-const char* password = "aLpHaEcHo1";
+const char* ssid = "yourAp";
+const char* password = "yourPassword";
 
 // WebServer on port 80
 WebServer server(80);
