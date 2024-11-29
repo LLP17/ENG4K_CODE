@@ -10,8 +10,8 @@
 #include <WebServer.h>
 
 // Replace with your network credentials
-const char* ssid     = "ECHO-ALPHA";
-const char* password = "aLpHaEcHo1";
+const char* ssid     = "yourAp";
+const char* password = "yourpassword";
 // We set a Static IP address
 IPAddress local_IP(192, 168, 4, 1);
 // We set a Gateway IP address
