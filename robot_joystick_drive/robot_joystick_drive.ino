@@ -1,13 +1,17 @@
 #include <WiFi.h>
 #include <WiFiAP.h>
-#include <WebServer.h>
+#include <AsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <ArduinoJson.h>
 
 // Replace with your network credentials
 const char* ssid = "yourAp";
 const char* password = "yourPassword";
 
 // WebServer on port 80
-WebServer server(80);
+AsyncWebServer server(80);
+// Websocket endpoint
+AsyncWebSocket ws("/ws"); 
 
 // Motor Pins
 int motor1Pin1 = 21; 
@@ -35,6 +39,20 @@ const char html[] PROGMEM = R"rawliteral(
     canvas { touch-action: none; background: #ccc; margin: 20px auto; display: block; }
   </style>
   <script>
+    // Web Socket Initialization
+    let gateway = `ws://${window.location.hostname}/ws`;
+    let ws;
+
+    window.addEventListener('load', onLoad);
+
+    function onLoad(event) {
+      initWebSocket();
+    }
+    
+    function initWebSocket() {
+      ws = new WebSocket(gateway);
+    }
+    
     let joystick = { x: 0, y: 0 };
     let centerX = 150, centerY = 150, maxRadius = 100;
 
@@ -52,7 +70,7 @@ const char html[] PROGMEM = R"rawliteral(
       joystick.x = Math.round((distance * Math.cos(angle)) / maxRadius * 100);
       joystick.y = Math.round((distance * Math.sin(angle)) / maxRadius * 100);
 
-      sendJoystickData(joystick.x, joystick.y);
+      sendJoystickData(joystick);
       drawJoystick();
     }
 
@@ -63,8 +81,11 @@ const char html[] PROGMEM = R"rawliteral(
       drawJoystick();
     }
 
-    function sendJoystickData(x, y) {
-      fetch(`/joystick?x=${x}&y=${y}`);
+    function sendJoystickData(joystick) {
+      // x, y arguments are keys in a JSON object with corresponding x, y motor speed values
+      if (ws && ws.readyState == WebSocket.OPEN) {
+        ws.send(JSON.stringify(joystick));
+      }
     }
 
     function drawJoystick() {
@@ -87,6 +108,7 @@ const char html[] PROGMEM = R"rawliteral(
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      initWebSocket();
       const canvas = document.getElementById('joystick');
       canvas.addEventListener('mousedown', updateJoystick);
       canvas.addEventListener('mousemove', (e) => e.buttons && updateJoystick(e));
@@ -110,18 +132,12 @@ void handleRoot() {
   server.send(200, "text/html", html);
 }
 
-void handleJoystick() {
-  if (server.hasArg("x") && server.hasArg("y")) {
-    int x = server.arg("x").toInt();
-    int y = server.arg("y").toInt();
-
-    // Calculate motor speeds and directions
+void handleJoystick(int x, int y) {
+  // Calculate motor speeds and directions
     int leftSpeed = constrain(map(y + x, -100, 100, -255, 255), -255, 255);
     int rightSpeed = constrain(map(y - x, -100, 100, -255, 255), -255, 255);
 
     setMotorSpeeds(leftSpeed, rightSpeed);
-  }
-  server.send(200);
 }
 
 void setMotorSpeeds(int leftSpeed, int rightSpeed) {
@@ -156,6 +172,54 @@ void setMotorSpeeds(int leftSpeed, int rightSpeed) {
   ledcWrite(enable2Pin, rightSpeed);
 }
 
+// Helper function for AwsEventType->WS_EVT_DATA
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+  AwsFrameInfo *info = (AwsFrameInfo*)arg;
+  if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+    DynamicJsonDocument doc(256);
+    DeserializationError error = deserializeJson(doc, data, len);
+    if (error) {
+      Serial.print(F("deserializeJson() failed with code "));
+      Serial.println(error.c_str());
+      return;
+    }
+    int x = doc["x"];
+    int y = doc["y"];
+    handleJoystick(x, y); // Pass joystick data to handler
+  }
+}
+
+void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
+  switch (type) {
+    case WS_EVT_CONNECT:
+      Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+      break;
+    case WS_EVT_DISCONNECT:
+      Serial.printf("WebSocket client #%u disconnected\n", client->id());
+      break;
+    case WS_EVT_DATA:
+      //data is received from the client (json)
+      handleWebSocketMessage(arg, data, len);
+    case WS_EVT_PONG:
+    case WS_EVT_ERROR:
+      break;
+  }
+  
+}
+
+// ----------------------------------------------------------------------------
+// WebSocket initialization
+// ----------------------------------------------------------------------------
+
+void initWebSocket() {
+  ws.onEvent(onEvent);
+  server.addHandler(&ws);
+}
+
+// ----------------------------------------------------------------------------
+// Initialization
+// ----------------------------------------------------------------------------
+
 void setup() {
   Serial.begin(115200);
 
@@ -178,14 +242,17 @@ void setup() {
   WiFi.softAP(ssid, password);
   Serial.println("AP IP address: " + WiFi.softAPIP().toString());
 
-  // Routes
-  server.on("/", handleRoot);
-  server.on("/joystick", handleJoystick);
+  // Web Socket Setup
+  initWebSocket();
 
   // Start server
+  server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
+    request->send(200, "text/html, html");
+  });
   server.begin();
 }
 
 void loop() {
   server.handleClient();
+  ws.cleanupClients();
 }
