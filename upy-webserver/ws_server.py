@@ -3,43 +3,41 @@ import socket
 import wifi_credentials
 import web_page
 
-ssidAP         = wifi_credentials.ssidAP
-passwordAP     = wifi_credentials.passwordAP
+ssidAP = wifi_credentials.ssidAP
+passwordAP = wifi_credentials.passwordAP
 
-local_IP       = '192.168.1.10'
-gateway        = '192.168.1.1'
-subnet         = '255.255.255.0'
-dns            = '8.8.8.8'
+local_IP = '192.168.1.10'
+# gateway = '192.168.1.1'
+# subnet = '255.255.255.0'
+# dns = '8.8.8.8'
 
-ap_if = network.WLAN(network.AP_IF)
+wlan = network.WLAN(network.AP_IF)
 
 def AP_Setup(ssidAP,passwordAP):
-  ap_if.ifconfig([local_IP,gateway,subnet,dns])
   print("Setting soft-AP  ... ")
-  ap_if.config(essid=ssidAP,authmode=network.AUTH_WPA_WPA2_PSK, password=passwordAP)
-  ap_if.active(True)
-  print('Success, IP address:', ap_if.ifconfig())
+  wlan.active(True)
+  wlan.config(essid=ssidAP, password=passwordAP)
+  print('Success, IP address:', wlan.ifconfig())
   print("Setup End\n")
 
 try:
   AP_Setup(ssidAP,passwordAP)
 except:
   print("Failed, please disconnect the power and restart the operation.")
-  ap_if.disconnect()
+  wlan.disconnect()
 
-# Initializing the socket server
-
+# Socket server initialization
+s_addr = socket.getaddrinfo(local_IP, 80)[0][-1]
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(('', 80))
+s.bind(s_addr)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 s.listen(5)
+print('Open socket server listening on adr {}.'.format(s_addr))
 
-while True:
+while 1:
   print('Waiting for a connection...')
-  try:
-    conn, addr = s.accept()
-    print("Got connection from %s" % str(addr))
-  except OSError as e:
-    print("Socket accept error:", e)
+  conn, addr = s.accept() 
+  print("Got connection from %s" % str(addr))
   
   request = conn.recv(1024).decode('utf-8')
   print("Request:", request)
@@ -67,3 +65,4 @@ while True:
     conn.sendall(response)
   
   conn.close()
+s.close()
