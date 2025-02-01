@@ -1,45 +1,47 @@
 import network
 import socket
+import time
 import wifi_credentials
 import web_page
 
-ssidAP = wifi_credentials.ssidAP
-passwordAP = wifi_credentials.passwordAP
-print('hi')
+ssid = wifi_credentials.ssid
+password = wifi_credentials.password
 
-local_IP = '192.168.1.10'
+server_up = '192.168.4.1'
+port = 80
 # gateway = '192.168.1.1'
 # subnet = '255.255.255.0'
 # dns = '8.8.8.8'
 
-wlan = network.WLAN(network.AP_IF)
+server_wlan = network.WLAN(network.AP_IF)
 
-def AP_Setup(ssidAP,passwordAP):
-  print("Setting soft-AP  ... ")
-  wlan.active(True)
-  wlan.config(essid=ssidAP, password=passwordAP)
-  print('Success, IP address:', wlan.ifconfig())
-  print("Setup End\n")
+def AP_Setup(ssid,password):
+  print("Server: Setting soft-AP  ... ")
+  server_wlan.active(True)
+  server_wlan.config(essid=ssid, password=password)
+  print('Server: Success, IP address:', server_wlan.ifconfig())
+  print("Server: Setup End\n")
 
 try:
-  AP_Setup(ssidAP,passwordAP)
+  AP_Setup(ssid,password)
 except:
   print("Failed, please disconnect the power and restart the operation.")
-  wlan.disconnect()
+  server_wlan.disconnect()
 
-# Socket server initialization
-s_addr = socket.getaddrinfo(local_IP, 80)[0][-1]
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(s_addr)
-s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-s.listen(5)
-print('Open socket server listening on adr {}.'.format(s_addr))
+# Server socket initialization
+local_IP = server_wlan.ifconfig()[0]
+server_socket = socket.socket()
+socket_addr = (local_IP, port)
+server_socket.bind(socket_addr)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.listen(5)
+print('Open socket server listening on adr {}.'.format(socket_addr))
 
 while 1:
   print('Waiting for a connection...')
-  conn, addr = s.accept() 
-  print("Got connection from %s" % str(addr))
-  
+  conn, addr = server_socket.accept() 
+  print("Got connection from %server_socket" % str(addr))
+
   request = conn.recv(1024).decode('utf-8')
   print("Request:", request)
   
@@ -48,9 +50,7 @@ while 1:
     # Handle joystick data
     content_length = int(request.split("Content-Length: ")[1].split("\r\n")[0])
     body_start = request.find("\r\n\r\n") + 4
-    body = request[body_start:body_start + content_length]
-    print("Joystick Data:", body)  # Process the joystick data here
-    
+
     # Send response
     conn.send('HTTP/1.1 200 OK\n')
     conn.send('Content-Type: text/plain\n')
@@ -64,6 +64,7 @@ while 1:
     conn.send('Content-Type: text/html\n')
     conn.send('Connection: close\n\n')
     conn.sendall(response)
-  
+
   conn.close()
-s.close()
+
+server_socket.close()

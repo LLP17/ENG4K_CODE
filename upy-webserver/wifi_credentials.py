@@ -1,2 +1,2 @@
-ssidAP ='ECHO-ALPHA'
-passwordAP = '12345678' 
+ssid ='ECHO-ALPHA'
+password = '12345678' 
