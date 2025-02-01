@@ -7,11 +7,7 @@ import web_page
 ssid = wifi_credentials.ssid
 password = wifi_credentials.password
 
-server_up = '192.168.4.1'
-port = 80
-# gateway = '192.168.1.1'
-# subnet = '255.255.255.0'
-# dns = '8.8.8.8'
+# server_ip = '192.168.4.1'
 
 server_wlan = network.WLAN(network.AP_IF)
 
@@ -31,25 +27,25 @@ except:
 # Server socket initialization
 local_IP = server_wlan.ifconfig()[0]
 server_socket = socket.socket()
-socket_addr = (local_IP, port)
+socket_addr = (local_IP, 80)
 server_socket.bind(socket_addr)
 server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.listen(5)
 print('Open socket server listening on adr {}.'.format(socket_addr))
 
 while 1:
-  print('Waiting for a connection...')
   conn, addr = server_socket.accept() 
-  print("Got connection from %server_socket" % str(addr))
-
   request = conn.recv(1024).decode('utf-8')
-  print("Request:", request)
   
   # Parse the HTTP request
   if "POST /joystick" in request:
     # Handle joystick data
     content_length = int(request.split("Content-Length: ")[1].split("\r\n")[0])
     body_start = request.find("\r\n\r\n") + 4
+    
+    # Display joystick telemetry
+    joystick_data = request[body_start:body_start + content_length]
+    print(joystick_data)
 
     # Send response
     conn.send('HTTP/1.1 200 OK\n')
