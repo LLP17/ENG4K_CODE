@@ -35,7 +35,7 @@ print('Open socket server listening on adr {}.'.format(socket_addr))
 
 # Adding external HTML file
 try:
-  with open("index.html", "r") as f:
+  with open("/static/index.html", "r") as f:
     html_string = f.read()
 except Exception as e:
   print("ERROR: " + e)
