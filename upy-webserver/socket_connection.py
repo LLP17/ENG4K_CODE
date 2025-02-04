@@ -33,6 +33,13 @@ server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 server_socket.listen(5)
 print('Open socket server listening on adr {}.'.format(socket_addr))
 
+# Adding external HTML file
+try:
+  with open("index.html", "r") as f:
+    html_string = f.read()
+except Exception as e:
+  print("ERROR: " + e)
+
 while 1:
   conn, addr = server_socket.accept() 
   request = conn.recv(1024).decode('utf-8')
@@ -55,7 +62,7 @@ while 1:
   
   elif "GET / " in request or "GET / HTTP/1.1" in request:
     # Serve the HTML page
-    response = web_page.html
+    response = html_string
     conn.send('HTTP/1.1 200 OK\n')
     conn.send('Content-Type: text/html\n')
     conn.send('Connection: close\n\n')
