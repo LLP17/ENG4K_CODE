@@ -39,7 +39,7 @@ const Joystick = () => {
     setPosition({ x: dx, y: dy });
 
     const newX = Math.round(position.x);
-    const newY = -Math.round(position.y); // Explicit Negative sign
+    const newY = -Math.round(position.y); // Explicit Negative sign 
     sendJoystickData({x: newX, y: newY});
 
   };
