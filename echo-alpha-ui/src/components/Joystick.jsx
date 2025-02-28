@@ -4,10 +4,19 @@ const Joystick = () => {
   const joystickRef = useRef(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
 
-  const maxRadius = 50; // Max distance joystick can move
+  const maxRadius = 50;
+
+  const sendJoystickData = (joystick) => {
+    console.log(`x: ${joystick.x} y:${joystick.y}`);
+    // fetch("/joystick", {
+    //   method: "POST",
+    //   headers: { "Content-Type": "application/json"},
+    //   body: JSON.stringify(joystick),
+    // }).catch((err) => console.error("Error sending joystick data:", err)); 
+  };
 
   const updateJoystick = (event) => {
-    event.preventDefault();
+    // event.preventDefault();
     
     const rect = joystickRef.current.getBoundingClientRect();
     const centerX = rect.width / 2;
@@ -20,13 +29,19 @@ const Joystick = () => {
     let dy = y - centerY;
 
     const distance = Math.sqrt(dx ** 2 + dy ** 2);
+    const angle = Math.atan2(dy, dx);
+
     if (distance > maxRadius) {
-      const angle = Math.atan2(dy, dx);
       dx = maxRadius * Math.cos(angle);
       dy = maxRadius * Math.sin(angle);
     }
 
     setPosition({ x: dx, y: dy });
+
+    const newX = Math.round(position.x);
+    const newY = -Math.round(position.y); // Explicit Negative sign
+    sendJoystickData({x: newX, y: newY});
+
   };
 
   const resetJoystick = () => {
