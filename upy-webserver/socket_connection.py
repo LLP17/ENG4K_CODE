@@ -2,7 +2,6 @@ import network
 import socket
 import time
 import wifi_credentials
-import web_page
 
 ssid = wifi_credentials.ssid
 password = wifi_credentials.password
