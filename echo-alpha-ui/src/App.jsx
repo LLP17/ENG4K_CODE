@@ -7,7 +7,7 @@ import {
   FaPowerOff,
   FaCamera,
 } from "react-icons/fa";
-import Joystick from "./components/Joystick.jsx";
+import Joystick from "./components/JoystickControl";
 
 const App = () => {
   return (
@@ -34,7 +34,7 @@ const App = () => {
         <span className="text-sm text-gray-700">192.168.4.1</span>
       </div>
 
-      {/* Controller */}
+      {/* Controls Section */}
       <div className="w-full flex flex-col items-center py-4">
         <Joystick />
 
