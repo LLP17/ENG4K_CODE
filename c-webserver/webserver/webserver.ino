@@ -1,50 +1,54 @@
 #include <WiFi.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
+#include <WebSocketsServer.h>
 
-const char *ssid_AP = "ESP32-AP";
-const char *password_AP = "12345678";
-
+const char *ssid_AP = "ECHO-AP";
+const char *password_AP = "ourbread";
 IPAddress local_IP(192, 168, 1, 100);
-IPAddress gateway(192, 168, 1, 10);
+IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
 
 AsyncWebServer server(80);
+WebSocketsServer webSocket(81); // WebSocket server on port 81
 
-void setup() {
+void onWebSocketEvent(uint8_t clientNum, WStype_t type, uint8_t *payload, size_t length)
+{
+    if (type == WStype_TEXT)
+    {
+        String message = String((char *)payload);
+        Serial.println("Received: " + message);
+
+        // Parse joystick data
+        if (message.startsWith("joystick:"))
+        {
+            String data = message.substring(9);
+            int commaIndex = data.indexOf(',');
+            int x = data.substring(0, commaIndex).toInt();
+            int y = data.substring(commaIndex + 1).toInt();
+            Serial.printf("Joystick X: %d, Y: %d\n", x, y);
+        }
+    }
+}
+
+void setup()
+{
     Serial.begin(115200);
-    delay(2000);
-
-    // Initialize SPIFFS for file storage
-    if (!SPIFFS.begin(true)) {
-        Serial.println("Failed to mount file system");
+    if (!SPIFFS.begin(true))
+    {
+        Serial.println("Failed to mount SPIFFS");
         return;
     }
 
-    // Configure and start the access point
-    WiFi.disconnect();
-    WiFi.mode(WIFI_AP);
-    if (WiFi.softAPConfig(local_IP, gateway, subnet)) {
-        Serial.println("AP Config Ready");
-    } else {
-        Serial.println("AP Config Failed!");
-    }
-
-    if (WiFi.softAP(ssid_AP, password_AP)) {
-        Serial.println("AP Started");
-        Serial.println("IP Address: " + WiFi.softAPIP().toString());
-    } else {
-        Serial.println("AP Failed to Start!");
-    }
-
-    // Serve static files
+    WiFi.softAP(ssid_AP, password_AP);
     server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
-
-    // Start the server
     server.begin();
-    Serial.println("Server started!");
+
+    webSocket.begin();
+    webSocket.onEvent(onWebSocketEvent);
 }
 
-void loop() {
-    // No code needed here for this example
+void loop()
+{
+    webSocket.loop();
 }
