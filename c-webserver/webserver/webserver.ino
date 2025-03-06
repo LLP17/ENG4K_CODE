@@ -2,6 +2,7 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
+#include "motor.ino";
 
 const char *ssid_AP = "ECHO-AP";
 const char *password_AP = "ourbread";
@@ -20,22 +21,17 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
         data[len] = 0;
         String message = String((char *)data);
 
-        // Handle joystick data
         if (message.startsWith("joystick:"))
         {
-            String joystickData = message.substring(10); // Get data after "joystick:"
+            String joystickData = message.substring(9);
             int commaIndex = joystickData.indexOf(',');
             if (commaIndex != -1)
             {
-                String x = joystickData.substring(0, commaIndex);
-                String y = joystickData.substring(commaIndex + 1);
+                String direction = joystickData.substring(0, commaIndex);
+                String distance = joystickData.substring(commaIndex + 1);
+                int distanceValue = distance.toInt();
 
-                // Convert to integer and use the joystick data
-                int xValue = x.toInt();
-                int yValue = y.toInt();
-
-                // Now you can use xValue and yValue for control purposes (e.g., controlling motors)
-                Serial.printf("Joystick X: %d, Y: %d\n", xValue, yValue);
+                controlMotor(direction, distanceValue);
             }
         }
     }
@@ -69,7 +65,6 @@ void initWebSocket()
 
 void initWifi()
 {
-    // Configure and start the access point
     WiFi.disconnect();
     WiFi.mode(WIFI_AP);
     if (WiFi.softAPConfig(local_IP, gateway, subnet))
@@ -90,6 +85,10 @@ void initWifi()
     {
         Serial.println("AP Failed to Start!");
     }
+}
+
+void controlMotor(String direction, int distance) {
+    Serial.printf("Joystick Direction: %s, Distance: %d\n", direction, distance);
 }
 
 void setup()

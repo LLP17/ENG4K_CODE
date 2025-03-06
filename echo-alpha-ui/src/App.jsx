@@ -16,7 +16,7 @@ const App = () => {
       <div className="w-full flex items-center justify-between px-4 py-2 bg-white shadow-md">
         <FaCog className="text-xl text-gray-700" />
         <div className="max-w-10 h-auto">
-          <img src="/public/echo.png" alt="echo" />
+          <img src="/echo.png" alt="echo" />
         </div>
         <FaBars className="text-xl text-gray-700" />
       </div>
