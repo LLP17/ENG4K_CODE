@@ -15,7 +15,9 @@ const App = () => {
       {/* Top Navbar */}
       <div className="w-full flex items-center justify-between px-4 py-2 bg-white shadow-md">
         <FaCog className="text-xl text-gray-700" />
-        <h1 className="text-xl font-bold">ECHO-ALPHA</h1>
+        <div className="max-w-10 h-auto">
+          <img src="/public/echo.png" alt="echo" />
+        </div>
         <FaBars className="text-xl text-gray-700" />
       </div>
 
@@ -31,7 +33,7 @@ const App = () => {
           <FaWifi className="text-gray-600" />
           <span className="text-sm font-medium">CONNECTED</span>
         </div>
-        <span className="text-sm text-gray-700">192.168.4.1</span>
+        <span className="text-sm text-gray-700">{window.location.hostname}</span>
       </div>
 
       {/* Controls Section */}
