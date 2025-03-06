@@ -67,6 +67,31 @@ void initWebSocket()
     server.addHandler(&ws);
 }
 
+void initWifi()
+{
+    // Configure and start the access point
+    WiFi.disconnect();
+    WiFi.mode(WIFI_AP);
+    if (WiFi.softAPConfig(local_IP, gateway, subnet))
+    {
+        Serial.println("AP Config Ready");
+    }
+    else
+    {
+        Serial.println("AP Config Failed!");
+    }
+
+    if (WiFi.softAP(ssid_AP, password_AP))
+    {
+        Serial.println("AP Started");
+        Serial.println("IP Address: " + WiFi.softAPIP().toString());
+    }
+    else
+    {
+        Serial.println("AP Failed to Start!");
+    }
+}
+
 void setup()
 {
     Serial.begin(115200);
@@ -76,8 +101,7 @@ void setup()
         return;
     }
 
-    WiFi.softAP(ssid_AP, password_AP);
-    Serial.println(WiFi.localIP());
+    initWifi();
 
     server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
     server.begin();
