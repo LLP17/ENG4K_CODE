@@ -1,7 +1,7 @@
 #include <WiFi.h>
+#include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
-#include <WebSocketsServer.h>
 
 const char *ssid_AP = "ECHO-AP";
 const char *password_AP = "ourbread";
@@ -10,25 +10,61 @@ IPAddress gateway(192, 168, 1, 1);
 IPAddress subnet(255, 255, 255, 0);
 
 AsyncWebServer server(80);
-WebSocketsServer webSocket(81); // WebSocket server on port 81
+AsyncWebSocket ws("/ws");
 
-void onWebSocketEvent(uint8_t clientNum, WStype_t type, uint8_t *payload, size_t length)
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
 {
-    if (type == WStype_TEXT)
+    AwsFrameInfo *info = (AwsFrameInfo *)arg;
+    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
     {
-        String message = String((char *)payload);
-        Serial.println("Received: " + message);
+        data[len] = 0;
+        String message = String((char *)data);
 
-        // Parse joystick data
+        // Handle joystick data
         if (message.startsWith("joystick:"))
         {
-            String data = message.substring(9);
-            int commaIndex = data.indexOf(',');
-            int x = data.substring(0, commaIndex).toInt();
-            int y = data.substring(commaIndex + 1).toInt();
-            Serial.printf("Joystick X: %d, Y: %d\n", x, y);
+            String joystickData = message.substring(10); // Get data after "joystick:"
+            int commaIndex = joystickData.indexOf(',');
+            if (commaIndex != -1)
+            {
+                String x = joystickData.substring(0, commaIndex);
+                String y = joystickData.substring(commaIndex + 1);
+
+                // Convert to integer and use the joystick data
+                int xValue = x.toInt();
+                int yValue = y.toInt();
+
+                // Now you can use xValue and yValue for control purposes (e.g., controlling motors)
+                Serial.printf("Joystick X: %d, Y: %d\n", xValue, yValue);
+            }
         }
     }
+}
+
+void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
+             void *arg, uint8_t *data, size_t len)
+{
+    switch (type)
+    {
+    case WS_EVT_CONNECT:
+        Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
+        break;
+    case WS_EVT_DISCONNECT:
+        Serial.printf("WebSocket client #%u disconnected\n", client->id());
+        break;
+    case WS_EVT_DATA:
+        handleWebSocketMessage(arg, data, len);
+        break;
+    case WS_EVT_PONG:
+    case WS_EVT_ERROR:
+        break;
+    }
+}
+
+void initWebSocket()
+{
+    ws.onEvent(onEvent);
+    server.addHandler(&ws);
 }
 
 void setup()
@@ -41,14 +77,15 @@ void setup()
     }
 
     WiFi.softAP(ssid_AP, password_AP);
+    Serial.println(WiFi.localIP());
+
     server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
     server.begin();
 
-    webSocket.begin();
-    webSocket.onEvent(onWebSocketEvent);
+    initWebSocket();
 }
 
 void loop()
 {
-    webSocket.loop();
+    ws.cleanupClients();
 }
