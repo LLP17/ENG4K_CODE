@@ -2,7 +2,7 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
-#include "motor.ino";
+#include "motor.h";
 
 const char *ssid_AP = "ECHO-AP";
 const char *password_AP = "ourbread";
@@ -29,9 +29,11 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
             {
                 String direction = joystickData.substring(0, commaIndex);
                 String distance = joystickData.substring(commaIndex + 1);
+                const char *directionCStr = direction.c_str();  // Conversion to const char*
+
                 int distanceValue = distance.toInt();
 
-                controlMotor(direction, distanceValue);
+                controlMotor(directionCStr, distanceValue);
             }
         }
     }
@@ -87,10 +89,6 @@ void initWifi()
     }
 }
 
-void controlMotor(String direction, int distance) {
-    Serial.printf("Joystick Direction: %s, Distance: %d\n", direction, distance);
-}
-
 void setup()
 {
     Serial.begin(115200);
@@ -101,6 +99,7 @@ void setup()
     }
 
     initWifi();
+    setupMotorPins();
 
     server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
     server.begin();
