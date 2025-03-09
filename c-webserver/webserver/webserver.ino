@@ -2,7 +2,6 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
-#include "motor.h";
 
 const char *ssid_AP = "ECHO-AP";
 const char *password_AP = "ourbread";
@@ -99,7 +98,6 @@ void setup()
     }
 
     initWifi();
-    setupMotorPins();
 
     server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
     server.begin();
