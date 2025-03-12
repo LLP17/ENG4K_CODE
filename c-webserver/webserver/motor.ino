@@ -1,41 +1,41 @@
-void controlMotor(const char* direction, int distance)
+void controlMotor(const char* direction, double x, double y)
 {
     if (strcmp(direction, "Top") == 0)
     {
-        handleForward(distance);
+        handleForward(x, y);
     }
     else if (strcmp(direction, "Bottom") == 0)
     {
-        handleBackward(distance);
+        handleBackward(x, y);
     }
     else if (strcmp(direction, "Left") == 0)
     {
-        handleLeft(distance);
+        handleLeft(x, y);
     }
     else if (strcmp(direction, "Right") == 0)
     {
-        handleRight(distance);
+        handleRight(x, y);
     } 
     else if (strcmp(direction, "RightTop") == 0) 
     {
-        handleForwardRight(distance);
+        handleForwardRight(x, y);
     } 
     else if (strcmp(direction, "TopLeft") == 0) 
     {
-        handleForwardLeft(distance);
+        handleForwardLeft(x, y);
 
     }
     else if (strcmp(direction, "LeftBottom") == 0) 
     {   
-        handleBackwardLeft(distance);
+        handleBackwardLeft(x, y);
     }
     else if (strcmp(direction, "BottomRight") == 0) 
     {
-        handleBackwardRight(distance);
+        handleBackwardRight(x, y);
     }
-    else if (strcmp(direction, "STOP") == 0 || strcmp(direction, "Center") == 0)
+    else if (strcmp(direction, "Stop") == 0)
     {
-        handleStop(distance);
+        handleStop(x, y);
     }
     else
     {
@@ -43,52 +43,52 @@ void controlMotor(const char* direction, int distance)
     }
 }
 
-void handleForward(int distance)
+void handleForward(double x, double y)
 {
-    Serial.printf("[ACTIVE] DRIVE Direction: FORWARD, Distance: %d\n", distance);
+    Serial.printf("[ACTIVE] DRIVE Direction: FORWARD, [%.2f, %.2f]\n", x, y);
 
 }
 
-void handleForwardRight(int distance) {
-    Serial.printf("[ACTIVE] DRIVE Direction: FORWARD-RIGHT, Distance: %d\n", distance);
+void handleForwardRight(double x, double y) {
+    Serial.printf("[ACTIVE] DRIVE Direction: FORWARD-RIGHT, [%.2f, %.2f]\n", x, y);
 }
 
-void handleForwardLeft(int distance) {
-    Serial.printf("[ACTIVE] DRIVE Direction: FORWARD-LEFT, Distance: %d\n", distance);
+void handleForwardLeft(double x, double y) {
+    Serial.printf("[ACTIVE] DRIVE Direction: FORWARD-LEFT, [%.2f, %.2f]\n", x, y);
 }
 
-void handleLeft(int distance)
+void handleLeft(double x, double y)
 {
-    Serial.printf("[ACTIVE] DRIVE Direction: LEFT, Distance: %d\n", distance);
+    Serial.printf("[ACTIVE] DRIVE Direction: LEFT, [%.2f, %.2f]\n", x, y);
  
 }
 
-void handleStop(int distance)
+void handleStop(double x, double y)
 {
-    Serial.printf("[ACTIVE] DRIVE Direction: STOP, Distance: %d\n", distance);
+    Serial.printf("[ACTIVE] DRIVE Direction: STOP, [%.2f, %.2f]\n", x, y);
     
 }
 
-void handleRight(int distance)
+void handleRight(double x, double y)
 {
-    Serial.printf("[ACTIVE] DRIVE Direction: RIGHT, Distance: %d\n", distance);
+    Serial.printf("[ACTIVE] DRIVE Direction: RIGHT, [%.2f, %.2f]\n", x, y);
    
 }
 
-void handleBackward(int distance)
+void handleBackward(double x, double y)
 {
-    Serial.printf("[ACTIVE] DRIVE Direction: BACKWARD, Distance: %d\n", distance);
+    Serial.printf("[ACTIVE] DRIVE Direction: BACKWARD, [%.2f, %.2f]\n", x, y);
     
 }
 
-void handleBackwardLeft(int distance)
+void handleBackwardLeft(double x, double y)
 {
-    Serial.printf("[ACTIVE] DRIVE Direction: BACKWARD-LEFT, Distance: %d\n", distance);
+    Serial.printf("[ACTIVE] DRIVE Direction: BACKWARD-LEFT, [%.2f, %.2f]\n", x, y);
     
 }
 
-void handleBackwardRight(int distance)
+void handleBackwardRight(double x, double y)
 {
-    Serial.printf("[ACTIVE] DRIVE Direction: BACKWARD-RIGHT, Distance: %d\n", distance);
+    Serial.printf("[ACTIVE] DRIVE Direction: BACKWARD-RIGHT, [%.2f, %.2f]\n", x, y);
     
 }

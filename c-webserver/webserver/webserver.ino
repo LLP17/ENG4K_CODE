@@ -2,6 +2,7 @@
 #include <AsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <SPIFFS.h>
+#include <ArduinoJson.h>
 
 const char *ssid_AP = "ECHO-AP";
 const char *password_AP = "ourbread";
@@ -15,27 +16,22 @@ AsyncWebSocket ws("/ws");
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
 {
     AwsFrameInfo *info = (AwsFrameInfo *)arg;
-    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT)
-    {
-        data[len] = 0;
-        String message = String((char *)data);
-
-        if (message.startsWith("joystick:"))
-        {
-            String joystickData = message.substring(9);
-            int commaIndex = joystickData.indexOf(',');
-            if (commaIndex != -1)
-            {
-                String direction = joystickData.substring(0, commaIndex);
-                String distance = joystickData.substring(commaIndex + 1);
-                const char *directionCStr = direction.c_str();  // Conversion to const char*
-
-                int distanceValue = distance.toInt();
-
-                controlMotor(directionCStr, distanceValue);
-            }
+    if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
+        DynamicJsonDocument doc(256);
+        DeserializationError error = deserializeJson(doc, data, len);
+        if (error) {
+            Serial.print(F("deserializeJson() failed with code "));
+            Serial.println(error.c_str());
+            return;
         }
+        const char *direction = doc["direction"].as<const char*>();
+        double x = doc["x"].as<double>();
+        double y = doc["y"].as<double>();
+
+        // In "motor.ino"
+        controlMotor(direction, x, y);
     }
+
 }
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType type,
