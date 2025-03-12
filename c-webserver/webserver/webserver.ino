@@ -13,6 +13,22 @@ IPAddress subnet(255, 255, 255, 0);
 AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
+/* Motor Configurations */
+
+// Motor Pins
+int motor1Pin1 = 21; 
+int motor1Pin2 = 22; 
+int enable1Pin = 23;
+int motor2Pin1 = 5; 
+int motor2Pin2 = 19; 
+int enable2Pin = 18;
+
+const int freq = 30000;    // PWM frequency
+const int resolution = 8;  // PWM resolution (8-bit)
+const int channel1 = 0;    // PWM channel for motor 1
+const int channel2 = 1;    // PWM channel for motor 2
+int dutyCycle = 0;
+
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len)
 {
     AwsFrameInfo *info = (AwsFrameInfo *)arg;
@@ -92,6 +108,25 @@ void setup()
         Serial.println("Failed to mount SPIFFS");
         return;
     }
+
+    /* Motor Setup */
+
+    // Motor pin setup
+    pinMode(motor1Pin1, OUTPUT);
+    pinMode(motor1Pin2, OUTPUT);
+    pinMode(motor2Pin1, OUTPUT);
+    pinMode(motor2Pin2, OUTPUT);
+
+    // PWM setup
+    // Configure PWM Pins
+    ledcAttach(enable1Pin, freq, resolution);
+    ledcAttach(enable2Pin, freq, resolution);
+
+    // Initialize PWM
+    ledcWrite(channel1, 0);
+    ledcWrite(channel2, 0);
+
+    /* Motor Setup END */
 
     initWifi();
 

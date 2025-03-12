@@ -1,94 +1,50 @@
 void controlMotor(const char* direction, double x, double y)
 {
-    if (strcmp(direction, "Top") == 0)
-    {
-        handleForward(x, y);
-    }
-    else if (strcmp(direction, "Bottom") == 0)
-    {
-        handleBackward(x, y);
-    }
-    else if (strcmp(direction, "Left") == 0)
-    {
-        handleLeft(x, y);
-    }
-    else if (strcmp(direction, "Right") == 0)
-    {
-        handleRight(x, y);
-    } 
-    else if (strcmp(direction, "RightTop") == 0) 
-    {
-        handleForwardRight(x, y);
-    } 
-    else if (strcmp(direction, "TopLeft") == 0) 
-    {
-        handleForwardLeft(x, y);
+    int xInt = int(x);
+    int yInt = int(y);
 
-    }
-    else if (strcmp(direction, "LeftBottom") == 0) 
-    {   
-        handleBackwardLeft(x, y);
-    }
-    else if (strcmp(direction, "BottomRight") == 0) 
-    {
-        handleBackwardRight(x, y);
-    }
-    else if (strcmp(direction, "Stop") == 0)
-    {
-        handleStop(x, y);
-    }
-    else
-    {
-        Serial.println("ERROR: Invalid direction");
-    }
-}
+    int leftSpeed = constrain(map(yInt + xInt, -80, 80, -255, 255), -255, 255);
+    int rightSpeed = constrain(map(yInt - xInt, -80, 80, -255, 255), -255, 255);
 
-void handleForward(double x, double y)
-{
-    Serial.printf("[ACTIVE] DRIVE Direction: FORWARD, [%.2f, %.2f]\n", x, y);
+    setMotorSpeeds(leftSpeed, rightSpeed);
+    Serial.println("calling 'controlMotor'");
 
 }
 
-void handleForwardRight(double x, double y) {
-    Serial.printf("[ACTIVE] DRIVE Direction: FORWARD-RIGHT, [%.2f, %.2f]\n", x, y);
-}
+void setMotorSpeeds(int leftSpeed, int rightSpeed) {
+  // Left motor
+  if (leftSpeed > 0) {
+    Serial.println("leftSpeed > 0");
+    digitalWrite(motor1Pin1, LOW);
+    digitalWrite(motor1Pin2, HIGH);
+  } else if (leftSpeed < 0) {
+    Serial.println("leftSpeed < 0");
+    digitalWrite(motor1Pin1, HIGH);
+    digitalWrite(motor1Pin2, LOW);
+    leftSpeed = -leftSpeed;
+  } else {
+    Serial.println("leftSpeed == 0");
+    digitalWrite(motor1Pin1, LOW);
+    digitalWrite(motor1Pin2, LOW);
+  }
 
-void handleForwardLeft(double x, double y) {
-    Serial.printf("[ACTIVE] DRIVE Direction: FORWARD-LEFT, [%.2f, %.2f]\n", x, y);
-}
+  // Right motor
+  if (rightSpeed > 0) {
+    Serial.println("rightSpeed > 0");
+    digitalWrite(motor2Pin1, LOW);
+    digitalWrite(motor2Pin2, HIGH);
+  } else if (rightSpeed < 0) {
+    Serial.println("rightSpeed < 0");
+    digitalWrite(motor2Pin1, HIGH);
+    digitalWrite(motor2Pin2, LOW);
+    rightSpeed = -rightSpeed;
+  } else {
+    Serial.println("rightSpeed == 0");
+    digitalWrite(motor2Pin1, LOW);
+    digitalWrite(motor2Pin2, LOW);
+  }
 
-void handleLeft(double x, double y)
-{
-    Serial.printf("[ACTIVE] DRIVE Direction: LEFT, [%.2f, %.2f]\n", x, y);
- 
-}
-
-void handleStop(double x, double y)
-{
-    Serial.printf("[ACTIVE] DRIVE Direction: STOP, [%.2f, %.2f]\n", x, y);
-    
-}
-
-void handleRight(double x, double y)
-{
-    Serial.printf("[ACTIVE] DRIVE Direction: RIGHT, [%.2f, %.2f]\n", x, y);
-   
-}
-
-void handleBackward(double x, double y)
-{
-    Serial.printf("[ACTIVE] DRIVE Direction: BACKWARD, [%.2f, %.2f]\n", x, y);
-    
-}
-
-void handleBackwardLeft(double x, double y)
-{
-    Serial.printf("[ACTIVE] DRIVE Direction: BACKWARD-LEFT, [%.2f, %.2f]\n", x, y);
-    
-}
-
-void handleBackwardRight(double x, double y)
-{
-    Serial.printf("[ACTIVE] DRIVE Direction: BACKWARD-RIGHT, [%.2f, %.2f]\n", x, y);
-    
+  // Set PWM values
+  ledcWrite(enable1Pin, leftSpeed);
+  ledcWrite(enable2Pin, rightSpeed);
 }
