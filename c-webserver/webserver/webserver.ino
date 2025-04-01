@@ -7,7 +7,7 @@
 
 #define CAMERA_MODEL_ESP32S3_EYE
 #include "camera_pins.h"
-#include "app_httpd.h"  // <- Import camera streaming module
+#include "app_httpd.h"
 
 /* WiFi Access Point Configuration */
 const char *ssid_AP = "ECHO-AP";
@@ -20,17 +20,21 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 /* Motor Configurations */
-int motor1Pin1 = 21;
-int motor1Pin2 = 22;
-int enable1Pin = 23;
-int motor2Pin1 = 5;
-int motor2Pin2 = 19;
-int enable2Pin = 18;
+int motor1Pin1 = 19;
+int motor1Pin2 = 20;
+int enable1Pin = 21;
+int motor2Pin1 = 47;
+int motor2Pin2 = 48;
+int enable2Pin = 45;
 
 const int freq = 30000;
 const int pwm_resolution = 8;
 const int channel1 = 0;
 const int channel2 = 1;
+
+/* Flashlight Configurations */
+const int flashlightPin = 14;
+bool flashlightState = false;
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
@@ -154,10 +158,22 @@ void setup() {
   s->set_brightness(s, 1);
   s->set_saturation(s, 0);
 
+  /* Flashlight Setup */
+  pinMode(flashlightPin, OUTPUT);
+  digitalWrite(flashlightPin, LOW);  // Start OFF
+
   /* Start Services */
   initWifi();
   initWebSocket();
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
+  
+  /* Routes */
+  server.on("/toggle-flashlight", HTTP_GET, [](AsyncWebServerRequest *request){
+    flashlightState = !flashlightState;
+    digitalWrite(flashlightPin, flashlightState ? HIGH : LOW);
+    request->send(200, "text/plain", flashlightState ? "ON" : "OFF");
+  });
+
   server.begin();
   startCameraServer();
 
