@@ -60,11 +60,6 @@ const int pwm_resolution = 8;
 const int channel1 = 0;
 const int channel2 = 1;
 
-// Stub for motor control
-void controlMotor(const char *dir, double x, double y) {
-  Serial.printf("Motor direction: %s | x: %.2f | y: %.2f\n", dir, x, y);
-}
-
 // Audio play function (proper casting for I2S)
 void playSound(int16_t *data, size_t len) {
   SPKR.write((const uint8_t *)data, len * sizeof(int16_t));
@@ -123,7 +118,7 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
         if (info->opcode == WS_TEXT) {
           handleWebSocketMessage(arg, data, len);
         } else if (info->opcode == WS_BINARY) {
-          Serial.printf("🔊 Audio chunk received: %d bytes\n", len);
+          Serial.printf("Audio chunk received: %d bytes\n", len);
           playSound((int16_t *)data, len / sizeof(int16_t));
         }
       }
@@ -146,15 +141,15 @@ void initMic() {
 
 void initSpeaker() {
   SPKR.setPinsPdmTx(27, 32, -1); // CLK, DATA, unused
-  SPKR.begin(I2S_MODE_PDM, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
+  SPKR.begin(I2S_MODE_TDM, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
 }
 
 void readMic(int16_t *data, size_t len) {
   available_bytes = MIC.available();
   if (available_bytes < MIC_BUFFER_SIZE) {
-    MIC.read(mic_buffer, available_bytes);
+    MIC.read();
   } else {
-    MIC.read(mic_buffer, MIC_BUFFER_SIZE);
+    MIC.read();
   }
 }
 
