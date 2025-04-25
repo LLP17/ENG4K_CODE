@@ -12,13 +12,16 @@ uint8_t buffer[buff_size];
 I2SClass SPKR;
 I2SClass MIC;
 
+// Added buffer for mic recording
+static int16_t mic_buffer[1024];
+
 /* Audio and Microphone Stream Configurations */
 typedef struct {
   int sampleRate;
   int channels;
   int bitDepth;
-
 } audioStreamConfig_t;
+
 const int DEFAULT_MIC_STREAM_SAMPLE_RATE = 16000;
 const int DEFAULT_AUDIO_STREAM_SAMPLE_RATE = 16000;
 const int MIC_BUFFER_SIZE = 1024;
@@ -32,7 +35,7 @@ audioStreamConfig_t micStreamConfig, audioStreamConfig;
 
 #define CAMERA_MODEL_ESP32S3_EYE
 #include "camera_pins.h"
-#include "app_httpd.h"  // <- Import camera streaming module
+#include "app_httpd.h"
 
 /* WiFi Access Point Configuration */
 const char *ssid_AP = "ECHO-AP";
@@ -57,6 +60,16 @@ const int pwm_resolution = 8;
 const int channel1 = 0;
 const int channel2 = 1;
 
+// Stub for motor control
+void controlMotor(const char *dir, double x, double y) {
+  Serial.printf("Motor direction: %s | x: %.2f | y: %.2f\n", dir, x, y);
+}
+
+// Audio play function (proper casting for I2S)
+void playSound(int16_t *data, size_t len) {
+  SPKR.write((const uint8_t *)data, len * sizeof(int16_t));
+}
+
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
@@ -68,15 +81,14 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       return;
     }
 
-
     const char *direction = doc["direction"];
     double x = doc["x"];
     double y = doc["y"];
     controlMotor(direction, x, y);
-  } 
+  }
 }
 
-void handleAudioStream(const char* data, const char* len, const char* sampleRate, const char* channels, const char* bitDepth) {
+void handleAudioStream(const char *data, const char *len, const char *sampleRate, const char *channels, const char *bitDepth) {
   int dataLen = atoi(len);
   int sampleRateInt = atoi(sampleRate);
   int channelsInt = atoi(channels);
@@ -89,21 +101,34 @@ void handleAudioStream(const char* data, const char* len, const char* sampleRate
   Serial.print(channelsInt);
   Serial.print(", ");
   Serial.println(bitDepthInt);
-  int16_t* audioData = (int16_t*)data;
+  int16_t *audioData = (int16_t *)data;
   playSound(audioData, dataLen);
 }
+
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
              AwsEventType type, void *arg, uint8_t *data, size_t len) {
+  AwsFrameInfo *info = (AwsFrameInfo *)arg;
+
   switch (type) {
     case WS_EVT_CONNECT:
       Serial.printf("WebSocket client #%u connected from %s\n", client->id(), client->remoteIP().toString().c_str());
       break;
+
     case WS_EVT_DISCONNECT:
       Serial.printf("WebSocket client #%u disconnected\n", client->id());
       break;
+
     case WS_EVT_DATA:
-      handleWebSocketMessage(arg, data, len);
+      if (info->final && info->index == 0 && info->len == len) {
+        if (info->opcode == WS_TEXT) {
+          handleWebSocketMessage(arg, data, len);
+        } else if (info->opcode == WS_BINARY) {
+          Serial.printf("🔊 Audio chunk received: %d bytes\n", len);
+          playSound((int16_t *)data, len / sizeof(int16_t));
+        }
+      }
       break;
+
     default:
       break;
   }
@@ -113,46 +138,43 @@ void initWebSocket() {
   ws.onEvent(onEvent);
   server.addHandler(&ws);
 }
-void initMic(){ 
-  MIC.setPins(5, 25, 26, 35, 0); //SCK, WS, SDOUT, SDIN, MCLK
+
+void initMic() {
+  MIC.setPins(5, 25, 26, 35, 0); // SCK, WS, SDOUT, SDIN, MCLK
   MIC.begin(I2S_MODE_STD, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
 }
 
-void initSpeaker(){ 
-  SPKR.setPinsPdmTx(27, 32, -1);
+void initSpeaker() {
+  SPKR.setPinsPdmTx(27, 32, -1); // CLK, DATA, unused
   SPKR.begin(I2S_MODE_PDM, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
 }
 
-void playSound(int16_t* data, size_t len){
-  SPKR.write(data, len);
-}
-
-void readMic(int16_t* data, size_t len){
+void readMic(int16_t *data, size_t len) {
   available_bytes = MIC.available();
-  if(available_bytes < MIC_BUFFER_SIZE) {
+  if (available_bytes < MIC_BUFFER_SIZE) {
     MIC.read(mic_buffer, available_bytes);
   } else {
     MIC.read(mic_buffer, MIC_BUFFER_SIZE);
   }
 }
 
-void closeMic(){
+void closeMic() {
   MIC.end();
 }
 
-void closeSpeaker(){
+void closeSpeaker() {
   SPKR.end();
 }
 
 void configureMicStream(int sampleRate, int channels, int bitDepth) {
-  if(sampleRate == -1){
+  if (sampleRate == -1) {
     micStreamConfig.sampleRate = DEFAULT_MIC_STREAM_SAMPLE_RATE;
   }
-  
   micStreamConfig.sampleRate = 16000;
   micStreamConfig.channels = 2;
-  micStreamConfig.bitDepth = 16; 
+  micStreamConfig.bitDepth = 16;
 }
+
 void configureAudioStream(int sampleRate, int channels, int bitDepth) {
   audioStreamConfig.sampleRate = 16000;
   audioStreamConfig.channels = 2;
@@ -183,7 +205,6 @@ void setup() {
     return;
   }
 
-  /* Motor Setup */
   pinMode(motor1Pin1, OUTPUT);
   pinMode(motor1Pin2, OUTPUT);
   pinMode(motor2Pin1, OUTPUT);
@@ -193,7 +214,6 @@ void setup() {
   ledcWrite(channel1, 0);
   ledcWrite(channel2, 0);
 
-  /* Camera Setup */
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -241,15 +261,15 @@ void setup() {
   s->set_brightness(s, 1);
   s->set_saturation(s, 0);
 
-  /* Start Services */
   initWifi();
   initWebSocket();
+  initSpeaker();
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
   server.begin();
   startCameraServer();
 
   Serial.print("Camera Ready! Use 'http://");
-  Serial.print(WiFi.localIP());
+  Serial.print(WiFi.softAPIP());
   Serial.println("' to connect");
 }
 
