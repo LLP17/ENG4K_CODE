@@ -60,6 +60,34 @@ const int pwm_resolution = 8;
 const int channel1 = 0;
 const int channel2 = 1;
 
+/* Sound Configurations */
+
+#include <driver/sigmadelta.h>
+
+#define SIGMA_DELTA_CHANNEL SIGMADELTA_CHANNEL_0
+#define SIGMA_DELTA_GPIO 25  // Change to your output GPIO
+
+void initSigmaDelta() {
+  sigmaDeltaAttach(46, 312500);
+  sigmaDeltaWrite(46, 0);
+}
+
+uint8_t convertPCMto8Bit(uint16_t sample) {
+  // Convert signed 16-bit PCM to unsigned 8-bit for Sigma Delta
+  int16_t signedSample = (int16_t)sample;
+  signedSample = signedSample >> 8;           // From 16-bit to 8-bit signed
+  uint8_t result = (uint8_t)(signedSample + 128); // Convert to unsigned 8-bit
+  return result;
+}
+
+void playSound(uint8_t *data, size_t len) {
+  for (size_t i = 0; i < len; i++) {
+    uint8_t level = convertPCMto8Bit(data[i]);
+    sigmaDeltaWrite(46, level);
+    delayMicroseconds(125);  // ~8 kHz sample rate. Adjust as needed.
+  }
+}
+
 // Audio play function (proper casting for I2S)
 void playSound(int16_t *data, size_t len) {
   SPKR.write((const uint8_t *)data, len * sizeof(int16_t));
