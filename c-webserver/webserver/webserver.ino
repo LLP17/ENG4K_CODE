@@ -4,10 +4,35 @@
 #include <SPIFFS.h>
 #include <ArduinoJson.h>
 #include "esp_camera.h"
+#include <ESP_I2S.h>
+
+const int buff_size = 128;
+int available_bytes, read_bytes;
+uint8_t buffer[buff_size];
+I2SClass SPKR;
+I2SClass MIC;
+
+/* Audio and Microphone Stream Configurations */
+typedef struct {
+  int sampleRate;
+  int channels;
+  int bitDepth;
+
+} audioStreamConfig_t;
+const int DEFAULT_MIC_STREAM_SAMPLE_RATE = 16000;
+const int DEFAULT_AUDIO_STREAM_SAMPLE_RATE = 16000;
+const int MIC_BUFFER_SIZE = 1024;
+const int AUDIO_BUFFER_SIZE = 1024;
+const int DEFAULT_MIC_STREAM_CHANNELS = 2;
+const int DEFAULT_AUDIO_STREAM_CHANNELS = 2;
+const int DEFAULT_MIC_STREAM_BIT_DEPTH = 16;
+const int DEFAULT_AUDIO_STREAM_BIT_DEPTH = 16;
+
+audioStreamConfig_t micStreamConfig, audioStreamConfig;
 
 #define CAMERA_MODEL_ESP32S3_EYE
 #include "camera_pins.h"
-#include "app_httpd.h"
+#include "app_httpd.h"  // <- Import camera streaming module
 
 /* WiFi Access Point Configuration */
 const char *ssid_AP = "ECHO-AP";
@@ -20,21 +45,17 @@ AsyncWebServer server(80);
 AsyncWebSocket ws("/ws");
 
 /* Motor Configurations */
-int motor1Pin1 = 19;
-int motor1Pin2 = 20;
-int enable1Pin = 21;
-int motor2Pin1 = 47;
-int motor2Pin2 = 48;
-int enable2Pin = 45;
+int motor1Pin1 = 21;
+int motor1Pin2 = 22;
+int enable1Pin = 23;
+int motor2Pin1 = 5;
+int motor2Pin2 = 19;
+int enable2Pin = 18;
 
 const int freq = 30000;
 const int pwm_resolution = 8;
 const int channel1 = 0;
 const int channel2 = 1;
-
-/* Flashlight Configurations */
-const int flashlightPin = 14;
-bool flashlightState = false;
 
 void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
   AwsFrameInfo *info = (AwsFrameInfo *)arg;
@@ -47,13 +68,30 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
       return;
     }
 
+
     const char *direction = doc["direction"];
     double x = doc["x"];
     double y = doc["y"];
     controlMotor(direction, x, y);
-  }
+  } 
 }
 
+void handleAudioStream(const char* data, const char* len, const char* sampleRate, const char* channels, const char* bitDepth) {
+  int dataLen = atoi(len);
+  int sampleRateInt = atoi(sampleRate);
+  int channelsInt = atoi(channels);
+  int bitDepthInt = atoi(bitDepth);
+  Serial.print("handleAudioStream: ");
+  Serial.print(dataLen);
+  Serial.print(", ");
+  Serial.print(sampleRateInt);
+  Serial.print(", ");
+  Serial.print(channelsInt);
+  Serial.print(", ");
+  Serial.println(bitDepthInt);
+  int16_t* audioData = (int16_t*)data;
+  playSound(audioData, dataLen);
+}
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
              AwsEventType type, void *arg, uint8_t *data, size_t len) {
   switch (type) {
@@ -74,6 +112,51 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
 void initWebSocket() {
   ws.onEvent(onEvent);
   server.addHandler(&ws);
+}
+void initMic(){ 
+  MIC.setPins(5, 25, 26, 35, 0); //SCK, WS, SDOUT, SDIN, MCLK
+  MIC.begin(I2S_MODE_STD, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
+}
+
+void initSpeaker(){ 
+  SPKR.setPinsPdmTx(27, 32, -1);
+  SPKR.begin(I2S_MODE_PDM, 16000, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_STEREO);
+}
+
+void playSound(int16_t* data, size_t len){
+  SPKR.write(data, len);
+}
+
+void readMic(int16_t* data, size_t len){
+  available_bytes = MIC.available();
+  if(available_bytes < MIC_BUFFER_SIZE) {
+    MIC.read(mic_buffer, available_bytes);
+  } else {
+    MIC.read(mic_buffer, MIC_BUFFER_SIZE);
+  }
+}
+
+void closeMic(){
+  MIC.end();
+}
+
+void closeSpeaker(){
+  SPKR.end();
+}
+
+void configureMicStream(int sampleRate, int channels, int bitDepth) {
+  if(sampleRate == -1){
+    micStreamConfig.sampleRate = DEFAULT_MIC_STREAM_SAMPLE_RATE;
+  }
+  
+  micStreamConfig.sampleRate = 16000;
+  micStreamConfig.channels = 2;
+  micStreamConfig.bitDepth = 16; 
+}
+void configureAudioStream(int sampleRate, int channels, int bitDepth) {
+  audioStreamConfig.sampleRate = 16000;
+  audioStreamConfig.channels = 2;
+  audioStreamConfig.bitDepth = 16;
 }
 
 void initWifi() {
@@ -158,22 +241,10 @@ void setup() {
   s->set_brightness(s, 1);
   s->set_saturation(s, 0);
 
-  /* Flashlight Setup */
-  pinMode(flashlightPin, OUTPUT);
-  digitalWrite(flashlightPin, LOW);  // Start OFF
-
   /* Start Services */
   initWifi();
   initWebSocket();
   server.serveStatic("/", SPIFFS, "/").setDefaultFile("index.html");
-  
-  /* Routes */
-  server.on("/toggle-flashlight", HTTP_GET, [](AsyncWebServerRequest *request){
-    flashlightState = !flashlightState;
-    digitalWrite(flashlightPin, flashlightState ? HIGH : LOW);
-    request->send(200, "text/plain", flashlightState ? "ON" : "OFF");
-  });
-
   server.begin();
   startCameraServer();
 
